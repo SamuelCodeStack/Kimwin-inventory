@@ -8,35 +8,35 @@ import {
   Button,
   InputGroup,
 } from "react-bootstrap";
-import {
-  FiUser,
-  FiMail,
-  FiLock,
-  FiPhone,
-  FiShield,
-  FiUserPlus,
-} from "react-icons/fi";
+import { FiUser, FiMail, FiLock, FiPhone, FiUserPlus } from "react-icons/fi";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function RegisterPage() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     email: "",
     username: "",
     password: "",
-    users_level: 2, // Default to Staff/Standard level
+    users_level: 2, // Default to Staff
     contact_number: "",
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Prepare data for SQL: contact_number should be parsed as Int
+
+    // Prepare data for SQL
     const payload = {
       ...formData,
       contact_number: parseInt(formData.contact_number) || 0,
     };
+
     console.log("Registering User:", payload);
-    alert("Check console for SQL-ready payload!");
+
+    // On successful registration, redirect to login
+    alert("Registration Successful! Redirecting to login...");
+    navigate("/");
   };
 
   const handleChange = (e) => {
@@ -64,7 +64,6 @@ export default function RegisterPage() {
 
               <Form onSubmit={handleSubmit}>
                 <Row>
-                  {/* First Name */}
                   <Col md={6} className="mb-3">
                     <Form.Label className="small fw-bold">
                       First Name
@@ -76,8 +75,6 @@ export default function RegisterPage() {
                       onChange={handleChange}
                     />
                   </Col>
-
-                  {/* Last Name */}
                   <Col md={6} className="mb-3">
                     <Form.Label className="small fw-bold">Last Name</Form.Label>
                     <Form.Control
@@ -90,8 +87,7 @@ export default function RegisterPage() {
                 </Row>
 
                 <Row>
-                  {/* Username */}
-                  <Col md={6} className="mb-3">
+                  <Col md={12} className="mb-3">
                     <Form.Label className="small fw-bold">Username</Form.Label>
                     <InputGroup>
                       <InputGroup.Text className="bg-white">
@@ -105,30 +101,8 @@ export default function RegisterPage() {
                       />
                     </InputGroup>
                   </Col>
-
-                  {/* User Level */}
-                  <Col md={6} className="mb-3">
-                    <Form.Label className="small fw-bold">
-                      Access Level
-                    </Form.Label>
-                    <InputGroup>
-                      <InputGroup.Text className="bg-white">
-                        <FiShield />
-                      </InputGroup.Text>
-                      <Form.Select
-                        name="users_level"
-                        onChange={handleChange}
-                        value={formData.users_level}
-                      >
-                        <option value={1}>Administrator (Level 1)</option>
-                        <option value={2}>Staff/User (Level 2)</option>
-                        <option value={3}>Viewer (Level 3)</option>
-                      </Form.Select>
-                    </InputGroup>
-                  </Col>
                 </Row>
 
-                {/* Email */}
                 <Form.Group className="mb-3">
                   <Form.Label className="small fw-bold">
                     Email Address
@@ -147,7 +121,6 @@ export default function RegisterPage() {
                   </InputGroup>
                 </Form.Group>
 
-                {/* Contact Number */}
                 <Form.Group className="mb-3">
                   <Form.Label className="small fw-bold">
                     Contact Number
@@ -165,7 +138,6 @@ export default function RegisterPage() {
                   </InputGroup>
                 </Form.Group>
 
-                {/* Password */}
                 <Form.Group className="mb-4">
                   <Form.Label className="small fw-bold">Password</Form.Label>
                   <InputGroup>
@@ -193,9 +165,10 @@ export default function RegisterPage() {
                 <div className="text-center mt-3">
                   <small className="text-muted">
                     Already have an account?{" "}
-                    <a href="/login" className="text-decoration-none">
+                    {/* POINTING TO THE ROOT "/" (LOGIN PAGE) */}
+                    <Link to="/" className="text-decoration-none fw-bold">
                       Sign In
-                    </a>
+                    </Link>
                   </small>
                 </div>
               </Form>

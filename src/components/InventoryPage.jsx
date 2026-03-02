@@ -64,6 +64,36 @@ export default function InventoryPage() {
     remarks: "",
   });
 
+  const handleDeleteProduct = async () => {
+    if (!selectedItem) return;
+
+    try {
+      const response = await fetch(
+        "http://localhost:3000/api/inventory/delete",
+        {
+          method: "POST", // Using POST to send the body data needed for the log
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_id: selectedItem.product_id,
+            product_name: selectedItem.product_name,
+            units_of_measure: selectedItem.units_of_measure,
+            quantity: selectedItem.quantity,
+            handled_by: loggedInUser,
+          }),
+        },
+      );
+
+      if (response.ok) {
+        setShowDelete(false);
+        fetchInventory(); // Refresh the table
+      } else {
+        alert("Error deleting product.");
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  };
+
   // --- API CALLS ---
   const fetchInventory = async () => {
     try {
@@ -322,7 +352,47 @@ export default function InventoryPage() {
         </Modal.Footer>
       </Modal>
 
-      {/* EDIT MODAL */}
+      {/* DELETE CONFIRMATION MODAL */}
+      <Modal show={showDelete} onHide={() => setShowDelete(false)} centered>
+        <Modal.Header closeButton className="border-0">
+          <Modal.Title className="text-danger d-flex align-items-center gap-2">
+            <FiAlertTriangle /> Confirm Deletion
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="py-0">
+          {selectedItem && (
+            <div className="p-2">
+              <p className="mb-1 text-muted small text-uppercase fw-bold">
+                Warning
+              </p>
+              <p>
+                Are you sure you want to delete{" "}
+                <strong>{selectedItem.product_name}</strong>? This action cannot
+                be undone, but the record of this deletion will be stored in the
+                Activity Logs.
+              </p>
+              <div className="bg-light p-3 rounded-3 mt-3 border-start border-danger border-4">
+                <div className="small text-muted">
+                  Current Stock: {selectedItem.quantity}{" "}
+                  {selectedItem.units_of_measure}
+                </div>
+                <div className="small text-muted">
+                  Handled by: {loggedInUser}
+                </div>
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="border-0">
+          <Button variant="light" onClick={() => setShowDelete(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleDeleteProduct}>
+            Confirm Delete
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       {/* EDIT MODAL */}
       <Modal
         show={showEdit}

@@ -19,6 +19,56 @@ const db = new pg.Client({
 });
 db.connect();
 
+app.post("/api/inventory/delete", async (req, res) => {
+  const { product_id, product_name, units_of_measure, quantity, handled_by } =
+    req.body;
+
+  try {
+    await db.query("BEGIN");
+
+    // 1. Log the deletion into item_log
+    // We pass the final quantity (0) to show the item is gone
+    const logQuery = `
+      INSERT INTO item_log (product_id, product_name, quantity, units_of_measure, action_type, handled_by, remarks) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `;
+
+    await db.query(logQuery, [
+      product_id,
+      product_name,
+      0, // The new quantity is now zero/deleted
+      units_of_measure,
+      "Deletion",
+      handled_by,
+      "Product permanently removed from system",
+    ]);
+
+    // 2. Delete from inventory
+    await db.query("DELETE FROM inventory WHERE product_id = $1", [product_id]);
+
+    await db.query("COMMIT");
+    res
+      .status(200)
+      .json({ message: "Product deleted and logged successfully" });
+  } catch (err) {
+    await db.query("ROLLBACK");
+    console.error("Delete Error:", err);
+    res.status(500).json({ error: "Failed to delete item" });
+  }
+});
+
+// GET ALL USERS
+app.get("/api/users", async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT users_id, users_level, first_name, last_name, email, username, contact_number, created_at FROM users ORDER BY users_id ASC",
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 1. GET ALL INVENTORY
 app.get("/api/inventory", async (req, res) => {
   try {

@@ -1,8 +1,9 @@
 import { Navbar, Container, Nav, Dropdown, Badge } from "react-bootstrap";
-import { FiLogOut, FiActivity } from "react-icons/fi";
+import { FiLogOut, FiActivity, FiUsers } from "react-icons/fi"; // Added FiUsers
 import { Link } from "react-router-dom";
 
 export default function Header() {
+  // Mock user - in a real app, this comes from Auth context/state
   const currentUser = { first_name: "John", last_name: "Doe", users_level: 1 };
 
   const getUserLevelInfo = (level) => {
@@ -40,7 +41,7 @@ export default function Header() {
               </div>
               <div className="text-start d-none d-sm-block">
                 <div className="fw-bold text-dark small">
-                  {currentUser.first_name}
+                  {currentUser.first_name} {currentUser.last_name}
                 </div>
                 <Badge bg={levelInfo.color} style={{ fontSize: "0.6rem" }}>
                   {levelInfo.label}
@@ -48,11 +49,18 @@ export default function Header() {
               </div>
             </Dropdown.Toggle>
 
-            <Dropdown.Menu className="shadow-sm border-0 mt-2">
-              {/* DYNAMIC TEXT BASED ON USER LEVEL */}
+            <Dropdown.Menu
+              className="shadow-sm border-0 mt-2"
+              style={{ minWidth: "200px" }}
+            >
               <Dropdown.Header className="text-uppercase small fw-bold text-primary">
                 {levelInfo.label} Controls
               </Dropdown.Header>
+
+              {/* Inventory Link */}
+              <Dropdown.Item as={Link} to="/inventory" className="py-2">
+                Inventory
+              </Dropdown.Item>
 
               <Dropdown.Item
                 as={Link}
@@ -62,8 +70,22 @@ export default function Header() {
                 <FiActivity className="text-muted" /> Activity Log
               </Dropdown.Item>
 
+              {/* ONLY SHOW USERS LINK FOR ADMINS (Level 1) */}
+              {currentUser.users_level === 1 && (
+                <Dropdown.Item
+                  as={Link}
+                  to="/users"
+                  className="d-flex align-items-center gap-2 py-2"
+                >
+                  <FiUsers className="text-muted" /> User Management
+                </Dropdown.Item>
+              )}
+
               <Dropdown.Divider />
-              <Dropdown.Item className="text-danger d-flex align-items-center gap-2 py-2">
+              <Dropdown.Item
+                className="text-danger d-flex align-items-center gap-2 py-2"
+                onClick={() => console.log("Logout clicked")}
+              >
                 <FiLogOut /> Logout
               </Dropdown.Item>
             </Dropdown.Menu>

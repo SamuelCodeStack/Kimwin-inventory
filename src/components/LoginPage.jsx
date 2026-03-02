@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom"; // Added Link here
 import {
   Container,
   Row,
@@ -12,6 +13,7 @@ import {
 import { FiMail, FiLock, FiEye, FiEyeOff, FiLogIn } from "react-icons/fi";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -25,15 +27,12 @@ export default function LoginPage() {
     setIsLoading(true);
     setError("");
 
-    // Simulated Authentication Logic
     try {
-      // Logic for calling your backend (e.g., /api/auth/login) would go here
       console.log("Logging in with:", formData);
-
-      // Artificial delay for UX
+      // Simulated delay
       setTimeout(() => {
         setIsLoading(false);
-        // On success: redirect to /inventory
+        navigate("/inventory");
       }, 1500);
     } catch (err) {
       setError("Invalid credentials. Please try again.");
@@ -69,7 +68,6 @@ export default function LoginPage() {
               )}
 
               <Form onSubmit={handleLogin}>
-                {/* Email Field */}
                 <Form.Group className="mb-3" controlId="email">
                   <Form.Label className="small fw-semibold text-muted">
                     Email Address
@@ -83,6 +81,7 @@ export default function LoginPage() {
                       required
                       placeholder="name@company.com"
                       className="border-start-0 ps-0"
+                      value={formData.email}
                       onChange={(e) =>
                         setFormData({ ...formData, email: e.target.value })
                       }
@@ -90,7 +89,6 @@ export default function LoginPage() {
                   </InputGroup>
                 </Form.Group>
 
-                {/* Password Field */}
                 <Form.Group className="mb-4" controlId="password">
                   <div className="d-flex justify-content-between">
                     <Form.Label className="small fw-semibold text-muted">
@@ -109,6 +107,7 @@ export default function LoginPage() {
                       required
                       placeholder="••••••••"
                       className="border-start-0 border-end-0 ps-0"
+                      value={formData.password}
                       onChange={(e) =>
                         setFormData({ ...formData, password: e.target.value })
                       }
@@ -130,11 +129,25 @@ export default function LoginPage() {
                 <Button
                   variant="primary"
                   type="submit"
-                  className="w-100 py-2 rounded-3 fw-semibold shadow-sm"
+                  className="w-100 py-2 rounded-3 fw-semibold shadow-sm mb-3"
                   disabled={isLoading}
                 >
                   {isLoading ? "Signing in..." : "Login"}
                 </Button>
+
+                {/* --- SIGN UP LINK ADDED HERE --- */}
+                <div className="text-center">
+                  <span className="small text-muted">
+                    Don't have an account?{" "}
+                  </span>
+                  <Link
+                    to="/register"
+                    className="small text-decoration-none fw-bold"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+                {/* ------------------------------ */}
               </Form>
             </Card.Body>
           </Card>
