@@ -23,20 +23,34 @@ export default function RegisterPage() {
     contact_number: "",
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Prepare data for SQL
     const payload = {
       ...formData,
       contact_number: parseInt(formData.contact_number) || 0,
     };
 
-    console.log("Registering User:", payload);
+    try {
+      const response = await fetch("http://localhost:3000/api/register", {
+        // ✅ Correct Port
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    // On successful registration, redirect to login
-    alert("Registration Successful! Redirecting to login...");
-    navigate("/");
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Registration Successful!");
+        navigate("/");
+      } else {
+        alert(data.error || "Registration failed");
+      }
+    } catch (err) {
+      console.error("Connection error:", err);
+      alert("Could not connect to the server.");
+    }
   };
 
   const handleChange = (e) => {

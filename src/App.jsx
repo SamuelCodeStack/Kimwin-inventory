@@ -1,7 +1,9 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Header from "./components/Header.jsx";
@@ -9,28 +11,53 @@ import InventoryPage from "./components/InventoryPage.jsx";
 import ItemLogPage from "./components/ItemLogPage.jsx";
 import LoginPage from "./components/LoginPage.jsx";
 import RegisterPage from "./components/RegistrationPage.jsx";
-// 1. Import your new UsersPage component
 import UsersPage from "./components/UsersPage.jsx";
 
+// A simple helper to protect routes
+const ProtectedRoute = ({ children, allowLevel }) => {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  if (!user) return <Navigate to="/" />; // Not logged in? Go to login.
+
+  if (allowLevel && user.level > allowLevel) {
+    // If user level is higher than allowed (e.g., Staff trying to see Admin pages)
+    return <Navigate to="/inventory" />;
+  }
+
+  return children;
+};
+
 function App() {
-  const [count, setCount] = useState(0);
-
   return (
-    <>
-      <Router>
-        {/* Header stays visible on all pages */}
-        <Header />
+    <Router>
+      <Header />
+      <Routes>
+        {/* Public Routes: Anyone can see these */}
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-        <Routes>
-          {/* Mapping URLs to your components */}
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/inventory" element={<InventoryPage />} />
-          <Route path="/logs" element={<ItemLogPage />} />
-          <Route path="/users" element={<UsersPage />} />
-        </Routes>
-      </Router>
-    </>
+        {/* Modified: Removed ProtectedRoute so Guests can view */}
+        <Route path="/inventory" element={<InventoryPage />} />
+
+        {/* Private Routes: Requires Login */}
+        <Route
+          path="/logs"
+          element={
+            <ProtectedRoute allowLevel={2}>
+              <ItemLogPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute allowLevel={1}>
+              <UsersPage />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
   );
 }
 

@@ -1,96 +1,116 @@
-import { Navbar, Container, Nav, Dropdown, Badge } from "react-bootstrap";
-import { FiLogOut, FiActivity, FiUsers } from "react-icons/fi"; // Added FiUsers
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { Navbar, Container, Nav, Dropdown } from "react-bootstrap";
+import { FiLogOut, FiUser, FiActivity, FiBox, FiLogIn } from "react-icons/fi";
 
 export default function Header() {
-  // Mock user - in a real app, this comes from Auth context/state
-  const currentUser = { first_name: "John", last_name: "Doe", users_level: 1 };
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user"));
 
-  const getUserLevelInfo = (level) => {
-    switch (level) {
-      case 1:
-        return { label: "Administrator", color: "danger" };
-      case 2:
-        return { label: "Staff", color: "primary" };
-      default:
-        return { label: "Viewer", color: "secondary" };
-    }
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    navigate("/");
   };
 
-  const levelInfo = getUserLevelInfo(currentUser.users_level);
+  // Safe logic for the user circle icon
+  const userInitial = user?.name ? user.name[0].toUpperCase() : "?";
 
   return (
-    <Navbar bg="white" className="shadow-sm py-2 sticky-top">
-      <Container fluid className="px-4">
-        <Navbar.Brand as={Link} to="/inventory">
-          <img src="/image/logo.png" alt="Logo" height="40" />
+    <Navbar bg="white" expand="lg" className="shadow-sm mb-4">
+      <Container>
+        <Navbar.Brand
+          as={Link}
+          to="/inventory"
+          className="fw-bold text-primary"
+        >
+          Kimwin Inventory
         </Navbar.Brand>
 
-        <Nav className="ms-auto align-items-center">
-          <Dropdown align="end">
-            <Dropdown.Toggle
-              variant="light"
-              className="d-flex align-items-center gap-2 border-0 bg-transparent shadow-none"
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        <Navbar.Collapse id="basic-navbar-nav">
+          <Nav className="me-auto">
+            {/* Everyone (Guest, Viewer, Staff, Admin) can see Inventory */}
+            <Nav.Link
+              as={Link}
+              to="/inventory"
+              className="d-flex align-items-center gap-1"
             >
-              <div
-                className="rounded-circle bg-dark d-flex align-items-center justify-content-center text-white fw-bold"
-                style={{ width: 36, height: 36 }}
-              >
-                {currentUser.first_name[0]}
-                {currentUser.last_name[0]}
-              </div>
-              <div className="text-start d-none d-sm-block">
-                <div className="fw-bold text-dark small">
-                  {currentUser.first_name} {currentUser.last_name}
-                </div>
-                <Badge bg={levelInfo.color} style={{ fontSize: "0.6rem" }}>
-                  {levelInfo.label}
-                </Badge>
-              </div>
-            </Dropdown.Toggle>
+              <FiBox /> Inventory
+            </Nav.Link>
 
-            <Dropdown.Menu
-              className="shadow-sm border-0 mt-2"
-              style={{ minWidth: "200px" }}
-            >
-              <Dropdown.Header className="text-uppercase small fw-bold text-primary">
-                {levelInfo.label} Controls
-              </Dropdown.Header>
-
-              {/* Inventory Link */}
-              <Dropdown.Item as={Link} to="/inventory" className="py-2">
-                Inventory
-              </Dropdown.Item>
-
-              <Dropdown.Item
+            {/* Only Logged in Staff (2) or Admin (1) can see Logs */}
+            {user && user.level <= 2 && (
+              <Nav.Link
                 as={Link}
                 to="/logs"
-                className="d-flex align-items-center gap-2 py-2"
+                className="d-flex align-items-center gap-1"
               >
-                <FiActivity className="text-muted" /> Activity Log
-              </Dropdown.Item>
+                <FiActivity /> Activity Logs
+              </Nav.Link>
+            )}
 
-              {/* ONLY SHOW USERS LINK FOR ADMINS (Level 1) */}
-              {currentUser.users_level === 1 && (
-                <Dropdown.Item
-                  as={Link}
-                  to="/users"
-                  className="d-flex align-items-center gap-2 py-2"
+            {/* ONLY Admin (1) can see User Management */}
+            {user && user.level === 1 && (
+              <Nav.Link
+                as={Link}
+                to="/users"
+                className="d-flex align-items-center gap-1"
+              >
+                <FiUser /> Users
+              </Nav.Link>
+            )}
+          </Nav>
+
+          <Nav>
+            {user ? (
+              /* --- LOGGED IN VIEW --- */
+              <Dropdown align="end">
+                <Dropdown.Toggle
+                  variant="light"
+                  className="rounded-pill d-flex align-items-center gap-2 border shadow-sm"
                 >
-                  <FiUsers className="text-muted" /> User Management
-                </Dropdown.Item>
-              )}
+                  <div
+                    className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                    style={{
+                      width: "24px",
+                      height: "24px",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    {userInitial}
+                  </div>
+                  <span className="small fw-bold">{user.name}</span>
+                </Dropdown.Toggle>
 
-              <Dropdown.Divider />
-              <Dropdown.Item
-                className="text-danger d-flex align-items-center gap-2 py-2"
-                onClick={() => console.log("Logout clicked")}
+                <Dropdown.Menu className="shadow border-0 mt-2">
+                  <Dropdown.Header>
+                    Role:{" "}
+                    {user.level === 1
+                      ? "Admin"
+                      : user.level === 2
+                        ? "Staff"
+                        : "Viewer"}
+                  </Dropdown.Header>
+                  <Dropdown.Divider />
+                  <Dropdown.Item
+                    onClick={handleLogout}
+                    className="text-danger d-flex align-items-center gap-2"
+                  >
+                    <FiLogOut /> Logout
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
+            ) : (
+              /* --- GUEST VIEW (NOT LOGGED IN) --- */
+              <Nav.Link
+                as={Link}
+                to="/"
+                className="d-flex align-items-center gap-1 text-primary fw-bold"
               >
-                <FiLogOut /> Logout
-              </Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
-        </Nav>
+                <FiLogIn /> Login
+              </Nav.Link>
+            )}
+          </Nav>
+        </Navbar.Collapse>
       </Container>
     </Navbar>
   );

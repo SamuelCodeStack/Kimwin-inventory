@@ -28,14 +28,24 @@ export default function LoginPage() {
     setError("");
 
     try {
-      console.log("Logging in with:", formData);
-      // Simulated delay
-      setTimeout(() => {
-        setIsLoading(false);
+      const response = await fetch("http://localhost:3000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Save user details to localStorage
+        localStorage.setItem("user", JSON.stringify(data.user));
         navigate("/inventory");
-      }, 1500);
+      } else {
+        setError(data.error || "Login failed");
+      }
     } catch (err) {
-      setError("Invalid credentials. Please try again.");
+      setError("Could not connect to server.");
+    } finally {
       setIsLoading(false);
     }
   };

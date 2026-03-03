@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react"; // Added useEffect
+import { useMemo, useState, useEffect } from "react";
 import {
   Container,
   Row,
@@ -8,17 +8,17 @@ import {
   Form,
   InputGroup,
   Pagination,
-  Spinner, // Added for better UX
+  Spinner,
+  Alert,
 } from "react-bootstrap";
-import { FiSearch, FiClock, FiUser, FiActivity } from "react-icons/fi";
+import { FiSearch, FiClock, FiUser, FiActivity, FiLock } from "react-icons/fi";
 
 function ActionBadge({ type }) {
-  // We use a normalized key (lowercase, no spaces) to make it more "bug-proof"
   const normalizedType = type?.toLowerCase().trim();
-
   const styles = {
     "stock in": { bg: "success", text: "white" },
     "stock out": { bg: "danger", text: "white" },
+    deletion: { bg: "dark", text: "white" }, // Added Deletion style
     adjustment: { bg: "warning", text: "dark" },
   };
 
@@ -32,14 +32,22 @@ function ActionBadge({ type }) {
 }
 
 export default function ItemLogPage() {
-  const [logs, setLogs] = useState([]); // Replaced static LOG_DATA
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // --- FETCH LOGS FROM BACKEND ---
+  // --- SESSION CHECK ---
+  const user = JSON.parse(localStorage.getItem("user"));
+  const isViewer = user?.level === 3;
+
   const fetchLogs = async () => {
+    if (isViewer) return; // Don't even fetch if they are a viewer
+
     try {
-      const response = await fetch("http://localhost:3000/api/logs");
+      // We pass the userId and userLevel to the API as query parameters
+      const response = await fetch(
+        `http://localhost:3000/api/logs?userId=${user.id}&userLevel=${user.level}`,
+      );
       const data = await response.json();
       setLogs(data);
       setLoading(false);
@@ -62,6 +70,25 @@ export default function ItemLogPage() {
     );
   }, [searchTerm, logs]);
 
+  // --- ACCESS DENIED VIEW FOR VIEWERS ---
+  if (isViewer) {
+    return (
+      <Container className="p-5">
+        <Alert
+          variant="danger"
+          className="text-center py-5 rounded-4 shadow-sm"
+        >
+          <FiLock size={50} className="mb-3" />
+          <Alert.Heading>Access Denied</Alert.Heading>
+          <p>
+            Viewers do not have permission to access the Activity Logs. Please
+            contact an administrator if you believe this is an error.
+          </p>
+        </Alert>
+      </Container>
+    );
+  }
+
   if (loading) {
     return (
       <Container className="p-5 text-center">
@@ -77,42 +104,43 @@ export default function ItemLogPage() {
       className="p-4"
       style={{ background: "#f8f9fa", minHeight: "100vh" }}
     >
-      {/* Header section */}
       <Row className="mb-4 align-items-center">
         <Col>
-          <h3 className="d-flex align-items-center gap-2">
-            <FiActivity className="text-primary" /> Item Logs
+          <h3 className="d-flex align-items-center gap-2 fw-bold">
+            <FiActivity className="text-primary" /> Activity Logs
           </h3>
           <p className="text-muted small mb-0">
-            Audit trail for all inventory movements and manual adjustments.
+            {user.level === 1
+              ? "Administrator View: Monitoring all system activity."
+              : "Staff View: Showing your personal activity history."}
           </p>
         </Col>
         <Col md={4}>
-          <InputGroup>
-            <InputGroup.Text className="bg-white">
-              <FiSearch />
+          <InputGroup className="shadow-sm">
+            <InputGroup.Text className="bg-white border-end-0">
+              <FiSearch className="text-muted" />
             </InputGroup.Text>
             <Form.Control
-              placeholder="Search logs..."
+              className="border-start-0 ps-0 shadow-none"
+              placeholder="Search by product, user, or action..."
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </InputGroup>
         </Col>
       </Row>
 
-      {/* Log Table Card */}
       <div className="bg-white border-0 shadow-sm rounded-4 overflow-hidden">
         <div className="table-responsive">
           <Table hover className="mb-0 align-middle">
             <thead className="bg-light">
               <tr
                 style={{
-                  fontSize: "0.85rem",
+                  fontSize: "0.8rem",
                   textTransform: "uppercase",
-                  letterSpacing: "0.5px",
+                  letterSpacing: "1px",
                 }}
               >
-                <th className="ps-4">Timestamp</th>
+                <th className="ps-4 py-3">Timestamp</th>
                 <th>Product</th>
                 <th>Action</th>
                 <th>Qty Change</th>
@@ -124,8 +152,7 @@ export default function ItemLogPage() {
               {filteredLogs.map((log) => (
                 <tr key={log.item_log_id}>
                   <td className="ps-4 text-muted">
-                    <FiClock className="me-1" />{" "}
-                    {/* Formats the DB timestamp nicely */}
+                    <FiClock className="me-1" />
                     {new Date(log.logged_at).toLocaleString("en-US", {
                       month: "short",
                       day: "numeric",
@@ -135,10 +162,7 @@ export default function ItemLogPage() {
                   </td>
                   <td>
                     <div className="fw-bold text-dark">{log.product_name}</div>
-                    <div
-                      className="text-muted extra-small"
-                      style={{ fontSize: "0.75rem" }}
-                    >
+                    <div className="text-muted" style={{ fontSize: "0.75rem" }}>
                       ID: #{log.product_id}
                     </div>
                   </td>
@@ -148,44 +172,40 @@ export default function ItemLogPage() {
                   <td
                     className={`fw-bold ${log.quantity >= 0 ? "text-success" : "text-danger"}`}
                   >
-                    {log.quantity > 0 ? `+${log.quantity}` : log.quantity}{" "}
-                    <small className="text-muted fw-normal">
+                    {log.quantity > 0 ? `+${log.quantity}` : log.quantity}
+                    <small className="ms-1 text-muted fw-normal">
                       {log.units_of_measure}
                     </small>
                   </td>
-
                   <td>
                     <div className="d-flex align-items-center gap-2">
                       <FiUser className="text-muted" /> {log.handled_by}
                     </div>
                   </td>
                   <td
-                    className="text-muted italic"
-                    style={{ fontStyle: "italic" }}
+                    className="text-muted"
+                    style={{ fontStyle: "italic", maxWidth: "250px" }}
                   >
                     "{log.remarks}"
                   </td>
                 </tr>
               ))}
-              {filteredLogs.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="text-center py-5 text-muted">
-                    No activity logs found.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </Table>
         </div>
 
-        {/* Pagination Footer */}
+        {filteredLogs.length === 0 && (
+          <div className="text-center py-5 bg-white">
+            <p className="text-muted mb-0">
+              No logs found matching your search.
+            </p>
+          </div>
+        )}
+
         <div className="p-3 border-top d-flex justify-content-between align-items-center bg-light">
           <span className="small text-muted">
             Showing {filteredLogs.length} entries
           </span>
-          <Pagination size="sm" className="mb-0">
-            <Pagination.Item active>{1}</Pagination.Item>
-          </Pagination>
         </div>
       </div>
     </Container>

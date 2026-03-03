@@ -8,7 +8,6 @@ import {
   InputGroup,
   Table,
   Badge,
-  Pagination,
   Modal,
 } from "react-bootstrap";
 import { FiSearch, FiPlus, FiAlertTriangle } from "react-icons/fi";
@@ -35,12 +34,19 @@ function StatusPill({ quantity, mininum_stock }) {
 }
 
 export default function InventoryPage() {
+  // --- SESSION & PERMISSIONS ---
+  const user = JSON.parse(localStorage.getItem("user")) || {
+    name: "Guest",
+    level: 3,
+  };
+  const loggedInUser = user.name;
+  const isAdminOrStaff = user.level <= 2; // Levels 1 and 2 can edit/delete
+
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 5;
-  const loggedInUser = "Admin User";
 
   // Modal States
   const [showAdd, setShowAdd] = useState(false);
@@ -63,36 +69,6 @@ export default function InventoryPage() {
     action_type: "",
     remarks: "",
   });
-
-  const handleDeleteProduct = async () => {
-    if (!selectedItem) return;
-
-    try {
-      const response = await fetch(
-        "http://localhost:3000/api/inventory/delete",
-        {
-          method: "POST", // Using POST to send the body data needed for the log
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            product_id: selectedItem.product_id,
-            product_name: selectedItem.product_name,
-            units_of_measure: selectedItem.units_of_measure,
-            quantity: selectedItem.quantity,
-            handled_by: loggedInUser,
-          }),
-        },
-      );
-
-      if (response.ok) {
-        setShowDelete(false);
-        fetchInventory(); // Refresh the table
-      } else {
-        alert("Error deleting product.");
-      }
-    } catch (err) {
-      console.error("Delete failed:", err);
-    }
-  };
 
   // --- API CALLS ---
   const fetchInventory = async () => {
@@ -136,15 +112,13 @@ export default function InventoryPage() {
 
   const handleUpdateStock = async () => {
     const payload = {
-      product_id: selectedItem.product_id,
-      product_name: selectedItem.product_name,
-      units_of_measure: selectedItem.units_of_measure,
-      old_quantity: selectedItem.quantity,
+      ...selectedItem,
       new_quantity: Number(editForm.new_quantity),
       mininum_stock: Number(editForm.mininum_stock),
       action_type: editForm.action_type,
       remarks: editForm.remarks,
       handled_by: loggedInUser,
+      old_quantity: selectedItem.quantity,
     };
     try {
       const response = await fetch(
@@ -161,6 +135,32 @@ export default function InventoryPage() {
       }
     } catch (err) {
       alert("Update failed");
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!selectedItem) return;
+    try {
+      const response = await fetch(
+        "http://localhost:3000/api/inventory/delete",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...selectedItem,
+            handled_by: loggedInUser,
+          }),
+        },
+      );
+
+      if (response.ok) {
+        setShowDelete(false);
+        fetchInventory();
+      } else {
+        alert("Error deleting product.");
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
     }
   };
 
@@ -199,44 +199,55 @@ export default function InventoryPage() {
       className="p-4"
       style={{ background: "#fafafa", minHeight: "100vh" }}
     >
-      <Row className="mb-3">
+      <Row className="mb-3 align-items-center">
         <Col>
-          <h3>Inventory Management</h3>
+          <h3 className="fw-bold text-dark">Inventory Management</h3>
         </Col>
         <Col className="text-end">
-          <Button variant="primary" onClick={() => setShowAdd(true)}>
-            <FiPlus /> Add Product
-          </Button>
+          {/* HIDE ADD BUTTON FOR VIEWERS (LEVEL 3) */}
+          {isAdminOrStaff && (
+            <Button
+              variant="primary"
+              className="shadow-sm px-4"
+              onClick={() => setShowAdd(true)}
+            >
+              <FiPlus className="me-2" /> Add Product
+            </Button>
+          )}
         </Col>
       </Row>
 
       <div className="bg-white rounded-4 shadow-sm p-3">
         <InputGroup className="mb-3" style={{ maxWidth: "400px" }}>
-          <InputGroup.Text className="bg-white">
+          <InputGroup.Text className="bg-white border-end-0 text-muted">
             <FiSearch />
           </InputGroup.Text>
           <Form.Control
-            placeholder="Search..."
+            className="border-start-0 ps-0 shadow-none"
+            placeholder="Search products..."
             onChange={(e) => setQ(e.target.value)}
           />
         </InputGroup>
 
-        <Table hover responsive>
-          <thead>
+        <Table hover responsive className="align-middle">
+          <thead className="bg-light">
             <tr>
-              <th>ID</th>
-              <th>Product Name</th>
-              <th>UoM</th>
-              <th>Quantity</th>
-              <th>Min. Stock</th>
-              <th>Status</th>
-              <th className="text-end">Actions</th>
+              <th className="text-muted small">ID</th>
+              <th className="text-muted small">PRODUCT NAME</th>
+              <th className="text-muted small">UOM</th>
+              <th className="text-muted small">QUANTITY</th>
+              <th className="text-muted small">MIN. STOCK</th>
+              <th className="text-muted small">STATUS</th>
+              {/* HIDE ACTIONS HEADER FOR VIEWERS */}
+              {isAdminOrStaff && (
+                <th className="text-end text-muted small">ACTIONS</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {rows.map((item) => (
               <tr key={item.product_id}>
-                <td>#{item.product_id}</td>
+                <td className="fw-bold">#{item.product_id}</td>
                 <td>{item.product_name}</td>
                 <td>{item.units_of_measure}</td>
                 <td>
@@ -260,31 +271,34 @@ export default function InventoryPage() {
                     mininum_stock={item.mininum_stock}
                   />
                 </td>
-                <td className="text-end">
-                  <Button
-                    size="sm"
-                    variant="light"
-                    onClick={() => openModal("view", item)}
-                  >
-                    <FaEye />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="light"
-                    className="mx-1 text-primary"
-                    onClick={() => openModal("edit", item)}
-                  >
-                    <FaEdit />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="light"
-                    className="text-danger"
-                    onClick={() => openModal("delete", item)}
-                  >
-                    <FaTrash />
-                  </Button>
-                </td>
+                {/* HIDE ACTIONS BUTTONS FOR VIEWERS */}
+                {isAdminOrStaff && (
+                  <td className="text-end">
+                    <Button
+                      size="sm"
+                      variant="light"
+                      className="me-1"
+                      onClick={() => openModal("view", item)}
+                    >
+                      <FaEye className="text-muted" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      className="me-1"
+                      onClick={() => openModal("edit", item)}
+                    >
+                      <FaEdit className="text-primary" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      onClick={() => openModal("delete", item)}
+                    >
+                      <FaTrash className="text-danger" />
+                    </Button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
