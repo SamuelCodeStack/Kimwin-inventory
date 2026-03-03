@@ -1,9 +1,11 @@
 import pg from "pg";
 import express from "express";
 import cors from "cors"; // Added for frontend-backend communication
+import env from "dotenv";
 
 const app = express();
 const port = 3000;
+env.config();
 
 // Middleware
 app.use(cors()); // Allows your React app to talk to this server
@@ -11,11 +13,11 @@ app.use(express.json()); // Essential for parsing JSON from React
 
 // Database Configuration
 const db = new pg.Client({
-  user: "postgres",
-  host: "localhost",
-  database: "Kimwin Inventory",
-  password: "Admin123",
-  port: 5432,
+  user: process.env.PG_USER,
+  host: process.env.PG_HOST,
+  database: process.env.PG_DATABASE,
+  password: process.env.PG_PASSWORD,
+  port: process.env.PG_PORT,
 });
 db.connect();
 
