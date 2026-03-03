@@ -8,7 +8,14 @@ import {
   Button,
   InputGroup,
 } from "react-bootstrap";
-import { FiUser, FiMail, FiLock, FiPhone, FiUserPlus } from "react-icons/fi";
+import {
+  FiUser,
+  FiMail,
+  FiLock,
+  FiPhone,
+  FiUserPlus,
+  FiShield,
+} from "react-icons/fi";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function RegisterPage() {
@@ -19,21 +26,21 @@ export default function RegisterPage() {
     email: "",
     username: "",
     password: "",
-    users_level: 2, // Default to Staff
     contact_number: "",
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Force users_level to 3 (Viewer) in the payload
     const payload = {
       ...formData,
+      users_level: 3,
       contact_number: parseInt(formData.contact_number) || 0,
     };
 
     try {
       const response = await fetch("http://localhost:3000/api/register", {
-        // ✅ Correct Port
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -42,7 +49,7 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (response.ok) {
-        alert("Registration Successful!");
+        alert("Registration Successful! Your account is set to Viewer level.");
         navigate("/");
       } else {
         alert(data.error || "Registration failed");
@@ -72,7 +79,7 @@ export default function RegisterPage() {
                 <FiUserPlus size={40} className="text-primary mb-2" />
                 <h2 className="fw-bold">Create Account</h2>
                 <p className="text-muted">
-                  Register a new user to the Inventory System
+                  Join the Inventory System as a <strong>Viewer</strong>.
                 </p>
               </div>
 
@@ -100,35 +107,35 @@ export default function RegisterPage() {
                   </Col>
                 </Row>
 
-                <Row>
-                  <Col md={12} className="mb-3">
-                    <Form.Label className="small fw-bold">Username</Form.Label>
-                    <InputGroup>
-                      <InputGroup.Text className="bg-white">
-                        <FiUser />
-                      </InputGroup.Text>
-                      <Form.Control
-                        required
-                        name="username"
-                        placeholder="johndoe88"
-                        onChange={handleChange}
-                      />
-                    </InputGroup>
-                  </Col>
-                </Row>
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Username</Form.Label>
+                  <InputGroup>
+                    <InputGroup.Text className="bg-white border-end-0">
+                      <FiUser className="text-muted" />
+                    </InputGroup.Text>
+                    <Form.Control
+                      required
+                      name="username"
+                      className="border-start-0 ps-0"
+                      placeholder="johndoe88"
+                      onChange={handleChange}
+                    />
+                  </InputGroup>
+                </Form.Group>
 
                 <Form.Group className="mb-3">
                   <Form.Label className="small fw-bold">
                     Email Address
                   </Form.Label>
                   <InputGroup>
-                    <InputGroup.Text className="bg-white">
-                      <FiMail />
+                    <InputGroup.Text className="bg-white border-end-0">
+                      <FiMail className="text-muted" />
                     </InputGroup.Text>
                     <Form.Control
                       required
                       type="email"
                       name="email"
+                      className="border-start-0 ps-0"
                       placeholder="john@company.com"
                       onChange={handleChange}
                     />
@@ -140,12 +147,13 @@ export default function RegisterPage() {
                     Contact Number
                   </Form.Label>
                   <InputGroup>
-                    <InputGroup.Text className="bg-white">
-                      <FiPhone />
+                    <InputGroup.Text className="bg-white border-end-0">
+                      <FiPhone className="text-muted" />
                     </InputGroup.Text>
                     <Form.Control
                       type="number"
                       name="contact_number"
+                      className="border-start-0 ps-0"
                       placeholder="0912345678"
                       onChange={handleChange}
                     />
@@ -155,17 +163,25 @@ export default function RegisterPage() {
                 <Form.Group className="mb-4">
                   <Form.Label className="small fw-bold">Password</Form.Label>
                   <InputGroup>
-                    <InputGroup.Text className="bg-white">
-                      <FiLock />
+                    <InputGroup.Text className="bg-white border-end-0">
+                      <FiLock className="text-muted" />
                     </InputGroup.Text>
                     <Form.Control
                       required
                       type="password"
                       name="password"
+                      className="border-start-0 ps-0"
                       placeholder="Min. 8 characters"
                       onChange={handleChange}
                     />
                   </InputGroup>
+                  {/* Informational Badge instead of a select input */}
+                  <div className="mt-3 d-flex align-items-center gap-2 text-primary p-2 bg-primary bg-opacity-10 rounded">
+                    <FiShield size={14} />
+                    <small className="fw-bold">
+                      Default Access: Viewer (Read-only)
+                    </small>
+                  </div>
                 </Form.Group>
 
                 <Button
@@ -179,7 +195,6 @@ export default function RegisterPage() {
                 <div className="text-center mt-3">
                   <small className="text-muted">
                     Already have an account?{" "}
-                    {/* POINTING TO THE ROOT "/" (LOGIN PAGE) */}
                     <Link to="/" className="text-decoration-none fw-bold">
                       Sign In
                     </Link>

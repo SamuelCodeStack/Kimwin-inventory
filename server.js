@@ -51,17 +51,12 @@ app.post("/api/login", async (req, res) => {
 });
 
 app.post("/api/register", async (req, res) => {
-  const {
-    first_name,
-    last_name,
-    email,
-    username,
-    password,
-    contact_number,
-    users_level,
-  } = req.body;
+  const { first_name, last_name, email, username, password, contact_number } =
+    req.body;
+
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
+    // Logic: Force users_level to 3 (Viewer) for all new registrations
     const query = `
       INSERT INTO users (first_name, last_name, email, username, password, contact_number, users_level)
       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING users_id;
@@ -72,13 +67,14 @@ app.post("/api/register", async (req, res) => {
       email,
       username,
       hashedPassword,
-      contact_number,
-      users_level,
+      contact_number || 0,
+      3, // Forced Viewer Level
     ]);
     res
       .status(201)
       .json({ message: "User registered!", userId: result.rows[0].users_id });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Email or Username already exists" });
   }
 });
@@ -196,27 +192,32 @@ app.post("/api/inventory/delete", async (req, res) => {
 // --- LOGS & USERS ---
 
 app.get("/api/logs", async (req, res) => {
-  const { userId, userLevel } = req.query;
+  const { fullName, userLevel } = req.query; // Accept fullName directly
+  console.log(`Log Request - Name: ${fullName}, Level: ${userLevel}`);
+
   try {
     let result;
-    // Admin (1) sees all. Staff (2) sees only their own logs based on their username.
+
+    // Level 1: Admin (Sees everything)
     if (parseInt(userLevel) === 1) {
       result = await db.query("SELECT * FROM item_log ORDER BY logged_at DESC");
-    } else {
-      // Finding the username first to ensure we match correctly in the log
-      const userRes = await db.query(
-        "SELECT username FROM users WHERE users_id = $1",
-        [userId],
-      );
-      const username = userRes.rows[0]?.username;
+    }
+    // Level 2: Staff (Sees only logs matching their Full Name)
+    else if (parseInt(userLevel) === 2) {
       result = await db.query(
         "SELECT * FROM item_log WHERE handled_by = $1 ORDER BY logged_at DESC",
-        [username],
+        [fullName],
       );
     }
+    // Level 3: Viewer (Sees nothing)
+    else {
+      result = { rows: [] };
+    }
+
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Database Error:", err.message);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -228,6 +229,36 @@ app.get("/api/users", async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// --- NEW: THE FIX FOR YOUR ERROR ---
+app.post("/api/users/update-level", async (req, res) => {
+  const { users_id, users_level, admin_user } = req.body;
+
+  try {
+    // 1. Verify that the person making the request is an Admin
+    const adminCheck = await db.query(
+      "SELECT users_level FROM users WHERE username = $1",
+      [admin_user],
+    );
+
+    if (adminCheck.rows.length === 0 || adminCheck.rows[0].users_level !== 1) {
+      return res.status(403).json({
+        error: "Forbidden: You do not have permission to update roles.",
+      });
+    }
+
+    // 2. Perform the update
+    const updateQuery = "UPDATE users SET users_level = $1 WHERE users_id = $2";
+    await db.query(updateQuery, [users_level, users_id]);
+
+    res.status(200).json({ message: "User level updated successfully" });
+  } catch (err) {
+    console.error("Update Level Error:", err);
+    res
+      .status(500)
+      .json({ error: "Internal server error during level update" });
   }
 });
 

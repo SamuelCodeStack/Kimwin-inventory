@@ -9,16 +9,19 @@ import {
   Table,
   Badge,
   Modal,
+  Pagination,
 } from "react-bootstrap";
 import { FiSearch, FiPlus, FiAlertTriangle } from "react-icons/fi";
 import { FaEye, FaEdit, FaTrash } from "react-icons/fa";
 
+// Helper for stock status
 const getStockStatus = (quantity, minStock) => {
   if (quantity <= 0) return "Out of Stock";
   if (quantity <= minStock) return "Low Stock";
   return "In Stock";
 };
 
+// Component for the status badge
 function StatusPill({ quantity, mininum_stock }) {
   const status = getStockStatus(quantity, mininum_stock);
   const variantMap = {
@@ -35,18 +38,22 @@ function StatusPill({ quantity, mininum_stock }) {
 
 export default function InventoryPage() {
   // --- SESSION & PERMISSIONS ---
-  const user = JSON.parse(localStorage.getItem("user")) || {
-    name: "Guest",
-    level: 3,
-  };
-  const loggedInUser = user.name;
-  const isAdminOrStaff = user.level <= 2; // Levels 1 and 2 can edit/delete
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+  const user = storedUser || { name: "Guest", level: 3, username: "" };
+
+  // FIX: Change 'user.name' to 'user.username'
+  // This ensures the log entry matches the unique username in the DB
+  const loggedInUser = user.username;
+
+  const isAdminOrStaff = user.level <= 2 && storedUser !== null;
 
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+
+  // --- PAGINATION STATE ---
   const [page, setPage] = useState(1);
-  const pageSize = 5;
+  const pageSize = 10;
 
   // Modal States
   const [showAdd, setShowAdd] = useState(false);
@@ -146,13 +153,9 @@ export default function InventoryPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...selectedItem,
-            handled_by: loggedInUser,
-          }),
+          body: JSON.stringify({ ...selectedItem, handled_by: loggedInUser }),
         },
       );
-
       if (response.ok) {
         setShowDelete(false);
         fetchInventory();
@@ -164,12 +167,17 @@ export default function InventoryPage() {
     }
   };
 
-  // --- TABLE LOGIC ---
+  // --- TABLE & SEARCH LOGIC ---
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return inventory.filter((x) => x.product_name.toLowerCase().includes(s));
+    const result = inventory.filter((x) =>
+      x.product_name.toLowerCase().includes(s),
+    );
+    setPage(1); // Reset to page 1 on new search
+    return result;
   }, [q, inventory]);
 
+  const totalPages = Math.ceil(filtered.length / pageSize);
   const rows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const openModal = (type, item) => {
@@ -189,7 +197,7 @@ export default function InventoryPage() {
   if (loading)
     return (
       <Container className="p-5 text-center">
-        <h4>Loading...</h4>
+        <h4>Loading Inventory...</h4>
       </Container>
     );
 
@@ -204,7 +212,6 @@ export default function InventoryPage() {
           <h3 className="fw-bold text-dark">Inventory Management</h3>
         </Col>
         <Col className="text-end">
-          {/* HIDE ADD BUTTON FOR VIEWERS (LEVEL 3) */}
           {isAdminOrStaff && (
             <Button
               variant="primary"
@@ -238,7 +245,6 @@ export default function InventoryPage() {
               <th className="text-muted small">QUANTITY</th>
               <th className="text-muted small">MIN. STOCK</th>
               <th className="text-muted small">STATUS</th>
-              {/* HIDE ACTIONS HEADER FOR VIEWERS */}
               {isAdminOrStaff && (
                 <th className="text-end text-muted small">ACTIONS</th>
               )}
@@ -271,7 +277,6 @@ export default function InventoryPage() {
                     mininum_stock={item.mininum_stock}
                   />
                 </td>
-                {/* HIDE ACTIONS BUTTONS FOR VIEWERS */}
                 {isAdminOrStaff && (
                   <td className="text-end">
                     <Button
@@ -303,8 +308,37 @@ export default function InventoryPage() {
             ))}
           </tbody>
         </Table>
+
+        {/* PAGINATION CONTROLS */}
+        {totalPages > 1 && (
+          <div className="d-flex justify-content-between align-items-center mt-3 px-2">
+            <div className="text-muted small">
+              Showing {rows.length} of {filtered.length} products
+            </div>
+            <Pagination className="mb-0">
+              <Pagination.Prev
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              />
+              {[...Array(totalPages)].map((_, i) => (
+                <Pagination.Item
+                  key={i + 1}
+                  active={i + 1 === page}
+                  onClick={() => setPage(i + 1)}
+                >
+                  {i + 1}
+                </Pagination.Item>
+              ))}
+              <Pagination.Next
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              />
+            </Pagination>
+          </div>
+        )}
       </div>
 
+      {/* MODALS (ADD, DELETE, EDIT) ARE BELOW */}
       {/* ADD MODAL */}
       <Modal show={showAdd} onHide={() => setShowAdd(false)} centered>
         <Modal.Header closeButton>
@@ -366,7 +400,7 @@ export default function InventoryPage() {
         </Modal.Footer>
       </Modal>
 
-      {/* DELETE CONFIRMATION MODAL */}
+      {/* DELETE MODAL */}
       <Modal show={showDelete} onHide={() => setShowDelete(false)} centered>
         <Modal.Header closeButton className="border-0">
           <Modal.Title className="text-danger d-flex align-items-center gap-2">
@@ -376,22 +410,14 @@ export default function InventoryPage() {
         <Modal.Body className="py-0">
           {selectedItem && (
             <div className="p-2">
-              <p className="mb-1 text-muted small text-uppercase fw-bold">
-                Warning
-              </p>
               <p>
                 Are you sure you want to delete{" "}
-                <strong>{selectedItem.product_name}</strong>? This action cannot
-                be undone, but the record of this deletion will be stored in the
-                Activity Logs.
+                <strong>{selectedItem.product_name}</strong>? This action is
+                logged.
               </p>
               <div className="bg-light p-3 rounded-3 mt-3 border-start border-danger border-4">
                 <div className="small text-muted">
-                  Current Stock: {selectedItem.quantity}{" "}
-                  {selectedItem.units_of_measure}
-                </div>
-                <div className="small text-muted">
-                  Handled by: {loggedInUser}
+                  Stock: {selectedItem.quantity} {selectedItem.units_of_measure}
                 </div>
               </div>
             </div>
@@ -474,7 +500,7 @@ export default function InventoryPage() {
                         })
                       }
                     >
-                      <option value="">Select an action...</option>
+                      <option value="">Select action...</option>
                       <option value="Stock In">Stock In</option>
                       <option value="Stock Out">Stock Out</option>
                       <option value="Adjustment">Adjustment</option>
@@ -500,7 +526,7 @@ export default function InventoryPage() {
                   as="textarea"
                   rows={2}
                   required
-                  placeholder="Please enter the reason for this change (e.g., 'Weekly restock', 'Damaged item', etc.)"
+                  placeholder="Reason for change..."
                   value={editForm.remarks}
                   onChange={(e) =>
                     setEditForm({ ...editForm, remarks: e.target.value })
@@ -517,10 +543,9 @@ export default function InventoryPage() {
           <Button
             variant="primary"
             onClick={handleUpdateStock}
-            // THE BUTTON DISABLES UNLESS BOTH FIELDS HAVE CONTENT
             disabled={!editForm.action_type || !editForm.remarks.trim()}
           >
-            Save & Log Activity
+            Save & Log
           </Button>
         </Modal.Footer>
       </Modal>
