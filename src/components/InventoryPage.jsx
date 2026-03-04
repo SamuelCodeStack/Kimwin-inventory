@@ -14,7 +14,7 @@ import {
 import { FiSearch, FiPlus, FiAlertTriangle, FiDownload } from "react-icons/fi";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable"; // Import the function directly
 
 const getStockStatus = (quantity, minStock) => {
   if (quantity <= 0) return "Out of Stock";
@@ -78,8 +78,14 @@ export default function InventoryPage() {
   // --- PDF EXPORT ---
   const exportToPDF = () => {
     const doc = new jsPDF();
-    doc.text("Inventory Status Report", 14, 20);
-    doc.autoTable({
+
+    // 1. Add some styling/text first
+    doc.setFontSize(18);
+    doc.text("Winwel Dac Inventory Status Report", 14, 20);
+
+    // 2. Call autoTable as a function, passing 'doc' inside
+    autoTable(doc, {
+      startY: 30, // Start the table below your title
       head: [["ID", "Product", "Qty", "Min", "Status"]],
       body: inventory.map((item) => [
         item.product_id,
@@ -88,9 +94,12 @@ export default function InventoryPage() {
         item.mininum_stock,
         getStockStatus(item.quantity, item.mininum_stock),
       ]),
-      startY: 30,
+      theme: "grid",
+      headStyles: { fillColor: [41, 128, 185] }, // Nice blue header
     });
-    doc.save("Inventory_Report.pdf");
+
+    // 3. Save it
+    doc.save(`Inventory_Report_${new Date().toLocaleDateString()}.pdf`);
   };
 
   // --- BULLETPROOF FILTER ---

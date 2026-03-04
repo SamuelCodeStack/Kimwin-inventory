@@ -22,7 +22,7 @@ export default function Header() {
         className="d-flex align-items-center gap-2"
       >
         <img
-          src="../public/image/logo.png" // The name of your file in the public folder
+          src="/image/logo.png" // The name of your file in the public folder
           alt="Kimwin Logo"
           width="250"
           height="50"
