@@ -110,12 +110,11 @@ export default function InventoryPage() {
     // 2. Call autoTable as a function, passing 'doc' inside
     autoTable(doc, {
       startY: 30, // Start the table below your title
-      head: [["ID", "Product", "Qty", "Min", "Status"]],
+      head: [["ID", "Product", "Qty", "Status"]],
       body: inventory.map((item) => [
         item.product_id,
         item.product_name,
         item.quantity,
-        item.mininum_stock,
         getStockStatus(item.quantity, item.mininum_stock),
       ]),
       theme: "grid",
@@ -259,9 +258,11 @@ export default function InventoryPage() {
                 <td>
                   <Badge
                     bg={
-                      item.quantity <= item.mininum_stock
-                        ? "warning"
-                        : "success"
+                      item.quantity <= 0
+                        ? "danger" // Red if exactly 0 or less
+                        : item.quantity <= item.mininum_stock
+                          ? "warning" // Yellow if low stock
+                          : "success" // Green if healthy stock
                     }
                   >
                     {getStockStatus(item.quantity, item.mininum_stock)}

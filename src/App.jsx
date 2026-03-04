@@ -1,8 +1,10 @@
+import { useEffect } from "react"; // Added useEffect
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
+  useNavigate, // We need this for the listener
 } from "react-router-dom";
 import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -13,33 +15,49 @@ import LoginPage from "./components/LoginPage.jsx";
 import RegisterPage from "./components/RegistrationPage.jsx";
 import UsersPage from "./components/UsersPage.jsx";
 
-// A simple helper to protect routes
+// ProtectedRoute stays the same...
 const ProtectedRoute = ({ children, allowLevel }) => {
   const user = JSON.parse(localStorage.getItem("user"));
-
-  if (!user) return <Navigate to="/" />; // Not logged in? Go to login.
-
-  if (allowLevel && user.level > allowLevel) {
-    // If user level is higher than allowed (e.g., Staff trying to see Admin pages)
+  if (!user) return <Navigate to="/" />;
+  if (allowLevel && user.level > allowLevel)
     return <Navigate to="/inventory" />;
-  }
-
   return children;
 };
 
-function App() {
+// Create a wrapper component to use the navigate hook
+function AppContent() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleSyncSession = (event) => {
+      // Look specifically for the 'user' key in localStorage
+      if (event.key === "user") {
+        if (!event.newValue) {
+          // 1. If 'user' was removed (logout), redirect to login
+          console.log("Logout detected in another tab.");
+          navigate("/");
+        } else {
+          // 2. Optional: If 'user' was added (login), redirect to inventory
+          console.log("Login detected in another tab.");
+          navigate("/inventory");
+        }
+      }
+    };
+
+    // Add the listener
+    window.addEventListener("storage", handleSyncSession);
+
+    // Cleanup when component unmounts
+    return () => window.removeEventListener("storage", handleSyncSession);
+  }, [navigate]);
+
   return (
-    <Router>
+    <>
       <Header />
       <Routes>
-        {/* Public Routes: Anyone can see these */}
         <Route path="/" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-
-        {/* Modified: Removed ProtectedRoute so Guests can view */}
         <Route path="/inventory" element={<InventoryPage />} />
-
-        {/* Private Routes: Requires Login */}
         <Route
           path="/logs"
           element={
@@ -57,6 +75,15 @@ function App() {
           }
         />
       </Routes>
+    </>
+  );
+}
+
+// Main App component
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

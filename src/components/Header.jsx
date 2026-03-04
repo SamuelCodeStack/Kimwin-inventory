@@ -11,21 +11,18 @@ export default function Header() {
     navigate("/");
   };
 
-  // Safe logic for the user circle icon
   const userInitial = user?.name ? user.name[0].toUpperCase() : "?";
 
   return (
     <Navbar bg="white" expand="lg" className="shadow-sm mb-4">
-      <Navbar.Brand
-        as={Link}
-        to={user ? "/inventory" : "/"}
-        className="d-flex align-items-center gap-2"
-      >
+      {/* MODIFIED: Removed 'as={Link}' and 'to' so it is no longer clickable */}
+      <Navbar.Brand className="d-flex align-items-center gap-2">
         <img
-          src="/image/logo.png" // The name of your file in the public folder
+          src="/image/logo.png"
           alt="Kimwin Logo"
           width="250"
           height="50"
+          style={{ cursor: "default" }} // Optional: prevents the "hand" cursor
         />
       </Navbar.Brand>
       <Navbar.Toggle aria-controls="basic-navbar-nav" />
