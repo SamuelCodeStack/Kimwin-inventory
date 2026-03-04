@@ -18,7 +18,12 @@ const db = new pg.Client({
   password: process.env.PG_PASSWORD,
   port: process.env.PG_PORT,
 });
-db.connect();
+
+db.connect().then(() => {
+  // Fixes the "Time Difference" issue for your session
+  db.query("SET timezone = 'Asia/Manila'");
+  console.log("Connected to Database & Timezone set to Manila");
+});
 
 // --- AUTH ROUTES ---
 
@@ -35,7 +40,7 @@ app.post("/api/login", async (req, res) => {
         const userData = {
           id: user.users_id,
           name: `${user.first_name} ${user.last_name}`,
-          level: user.users_level, // 1 = Admin, 2 = Staff, 3 = Viewer
+          level: user.users_level,
           username: user.username,
         };
         res.status(200).json({ message: "Login successful", user: userData });
@@ -53,10 +58,8 @@ app.post("/api/login", async (req, res) => {
 app.post("/api/register", async (req, res) => {
   const { first_name, last_name, email, username, password, contact_number } =
     req.body;
-
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    // Logic: Force users_level to 3 (Viewer) for all new registrations
     const query = `
       INSERT INTO users (first_name, last_name, email, username, password, contact_number, users_level)
       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING users_id;
@@ -68,13 +71,12 @@ app.post("/api/register", async (req, res) => {
       username,
       hashedPassword,
       contact_number || 0,
-      3, // Forced Viewer Level
+      3,
     ]);
     res
       .status(201)
       .json({ message: "User registered!", userId: result.rows[0].users_id });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Email or Username already exists" });
   }
 });
@@ -86,9 +88,12 @@ app.get("/api/inventory", async (req, res) => {
     const result = await db.query(
       "SELECT * FROM inventory ORDER BY product_id ASC",
     );
-    res.json(result.rows);
+    // Ensure we always send an array, even if empty
+    res.json(result.rows || []);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Inventory Fetch Error:", err.message);
+    // Send 500 but keep the format consistent
+    res.status(500).json([]);
   }
 });
 
@@ -98,6 +103,7 @@ app.post("/api/inventory/add", async (req, res) => {
     units_of_measure,
     quantity,
     mininum_stock,
+    userId,
     handled_by,
   } = req.body;
   try {
@@ -110,9 +116,10 @@ app.post("/api/inventory/add", async (req, res) => {
       mininum_stock || 0,
     ]);
 
-    const insertLog = `INSERT INTO item_log (product_id, product_name, quantity, units_of_measure, action_type, handled_by, remarks) VALUES ($1, $2, $3, $4, $5, $6, $7)`;
+    const insertLog = `INSERT INTO item_log (product_id, users_id, product_name, quantity, units_of_measure, action_type, handled_by, remarks) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
     await db.query(insertLog, [
       result.rows[0].product_id,
+      userId, // FK Linked here
       product_name,
       quantity || 0,
       units_of_measure,
@@ -137,6 +144,7 @@ app.post("/api/inventory/update", async (req, res) => {
     mininum_stock,
     action_type,
     handled_by,
+    userId,
     remarks,
     units_of_measure,
     old_quantity,
@@ -147,10 +155,12 @@ app.post("/api/inventory/update", async (req, res) => {
       `UPDATE inventory SET quantity = $1, mininum_stock = $2 WHERE product_id = $3`,
       [new_quantity, mininum_stock, product_id],
     );
+
     const qty_change = new_quantity - old_quantity;
-    const insertLog = `INSERT INTO item_log (product_id, product_name, quantity, units_of_measure, action_type, handled_by, remarks) VALUES ($1, $2, $3, $4, $5, $6, $7)`;
+    const insertLog = `INSERT INTO item_log (product_id, users_id, product_name, quantity, units_of_measure, action_type, handled_by, remarks) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
     await db.query(insertLog, [
       product_id,
+      userId,
       product_name,
       qty_change,
       units_of_measure,
@@ -158,6 +168,7 @@ app.post("/api/inventory/update", async (req, res) => {
       handled_by,
       remarks,
     ]);
+
     await db.query("COMMIT");
     res.status(200).json({ message: "Stock updated" });
   } catch (err) {
@@ -167,12 +178,14 @@ app.post("/api/inventory/update", async (req, res) => {
 });
 
 app.post("/api/inventory/delete", async (req, res) => {
-  const { product_id, product_name, units_of_measure, handled_by } = req.body;
+  const { product_id, product_name, units_of_measure, userId, handled_by } =
+    req.body;
   try {
     await db.query("BEGIN");
-    const insertLog = `INSERT INTO item_log (product_id, product_name, quantity, units_of_measure, action_type, handled_by, remarks) VALUES ($1, $2, $3, $4, $5, $6, $7)`;
+    const insertLog = `INSERT INTO item_log (product_id, users_id, product_name, quantity, units_of_measure, action_type, handled_by, remarks) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
     await db.query(insertLog, [
       product_id,
+      userId,
       product_name,
       0,
       units_of_measure,
@@ -180,6 +193,7 @@ app.post("/api/inventory/delete", async (req, res) => {
       handled_by,
       "Product permanently removed",
     ]);
+
     await db.query("DELETE FROM inventory WHERE product_id = $1", [product_id]);
     await db.query("COMMIT");
     res.status(200).json({ message: "Product deleted" });
@@ -192,31 +206,25 @@ app.post("/api/inventory/delete", async (req, res) => {
 // --- LOGS & USERS ---
 
 app.get("/api/logs", async (req, res) => {
-  const { fullName, userLevel } = req.query; // Accept fullName directly
-  console.log(`Log Request - Name: ${fullName}, Level: ${userLevel}`);
+  const { userId, userLevel } = req.query;
 
   try {
     let result;
-
-    // Level 1: Admin (Sees everything)
+    // Level 1: Admin - See all
     if (parseInt(userLevel) === 1) {
       result = await db.query("SELECT * FROM item_log ORDER BY logged_at DESC");
     }
-    // Level 2: Staff (Sees only logs matching their Full Name)
+    // Level 2: Staff - See only their own logs via Foreign Key
     else if (parseInt(userLevel) === 2) {
       result = await db.query(
-        "SELECT * FROM item_log WHERE handled_by = $1 ORDER BY logged_at DESC",
-        [fullName],
+        "SELECT * FROM item_log WHERE users_id = $1 ORDER BY logged_at DESC",
+        [userId],
       );
-    }
-    // Level 3: Viewer (Sees nothing)
-    else {
+    } else {
       result = { rows: [] };
     }
-
     res.json(result.rows);
   } catch (err) {
-    console.error("Database Error:", err.message);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
@@ -232,33 +240,23 @@ app.get("/api/users", async (req, res) => {
   }
 });
 
-// --- NEW: THE FIX FOR YOUR ERROR ---
 app.post("/api/users/update-level", async (req, res) => {
   const { users_id, users_level, admin_user } = req.body;
-
   try {
-    // 1. Verify that the person making the request is an Admin
     const adminCheck = await db.query(
       "SELECT users_level FROM users WHERE username = $1",
       [admin_user],
     );
-
     if (adminCheck.rows.length === 0 || adminCheck.rows[0].users_level !== 1) {
-      return res.status(403).json({
-        error: "Forbidden: You do not have permission to update roles.",
-      });
+      return res.status(403).json({ error: "Forbidden" });
     }
-
-    // 2. Perform the update
-    const updateQuery = "UPDATE users SET users_level = $1 WHERE users_id = $2";
-    await db.query(updateQuery, [users_level, users_id]);
-
-    res.status(200).json({ message: "User level updated successfully" });
+    await db.query("UPDATE users SET users_level = $1 WHERE users_id = $2", [
+      users_level,
+      users_id,
+    ]);
+    res.status(200).json({ message: "User level updated" });
   } catch (err) {
-    console.error("Update Level Error:", err);
-    res
-      .status(500)
-      .json({ error: "Internal server error during level update" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

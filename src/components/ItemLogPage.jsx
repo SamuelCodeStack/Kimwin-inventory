@@ -54,9 +54,9 @@ export default function ItemLogPage() {
 
     setLoading(true);
     try {
-      // FIX: Pass the 'name' (First + Last) to the backend
+      // FIX: Send userId and userLevel to the API
       const response = await fetch(
-        `http://localhost:3000/api/logs?fullName=${encodeURIComponent(savedUser.name)}&userLevel=${savedUser.level}`,
+        `http://localhost:3000/api/logs?userId=${savedUser.id}&userLevel=${savedUser.level}`,
       );
 
       if (!response.ok) throw new Error("Network response was not ok");
@@ -70,6 +70,7 @@ export default function ItemLogPage() {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchLogs();
   }, [user?.id, user?.level]); // Re-fetch if user data changes
@@ -123,7 +124,7 @@ export default function ItemLogPage() {
       <Row className="mb-4 align-items-center">
         <Col>
           <h3 className="d-flex align-items-center gap-2 fw-bold">
-            <FiActivity className="text-primary" /> Activity Logs
+            Activity Logs
           </h3>
           <p className="text-muted small mb-0">
             {user?.level === 1
