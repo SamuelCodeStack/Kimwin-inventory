@@ -51,9 +51,33 @@ export default function InventoryPage() {
     remarks: "",
   });
 
+  // const fetchInventory = async () => {
+  //   try {
+  //     const response = await fetch("http://localhost:3000/api/inventory");
+  //     const data = await response.json();
+
+  //     // CRITICAL FIX: Ensure we always set an array
+  //     if (Array.isArray(data)) {
+  //       setInventory(data);
+  //     } else {
+  //       console.error("Server returned non-array data:", data);
+  //       setInventory([]);
+  //     }
+  //   } catch (err) {
+  //     console.error("Fetch error:", err);
+  //     setInventory([]);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const fetchInventory = async () => {
+    // 1. Get the API URL from your environment variables
+    const apiUrl = import.meta.env.VITE_API_URL;
+
     try {
-      const response = await fetch("http://localhost:3000/api/inventory");
+      // 2. Use the variable to point to Computer A's IP address
+      const response = await fetch(`${apiUrl}/inventory`);
       const data = await response.json();
 
       // CRITICAL FIX: Ensure we always set an array
@@ -112,10 +136,38 @@ export default function InventoryPage() {
 
   const rows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  // const handleUpdateStock = async () => {
+  //   try {
+  //     const response = await fetch(
+  //       "http://localhost:3000/api/inventory/update",
+  //       {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           ...selectedItem,
+  //           ...editForm,
+  //           userId: user.id,
+  //           handled_by: user.name,
+  //           old_quantity: selectedItem.quantity,
+  //         }),
+  //       },
+  //     );
+  //     if (response.ok) {
+  //       setShowEdit(false);
+  //       fetchInventory();
+  //     }
+  //   } catch (err) {
+  //     alert("Update failed");
+  //   }
+  // };
+
   const handleUpdateStock = async () => {
     try {
+      // 1. Get the API URL from your environment variable
+      const apiUrl = import.meta.env.VITE_API_URL;
+
       const response = await fetch(
-        "http://localhost:3000/api/inventory/update",
+        `${apiUrl}/inventory/update`, // 2. Use the variable here
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -128,12 +180,17 @@ export default function InventoryPage() {
           }),
         },
       );
+
       if (response.ok) {
         setShowEdit(false);
-        fetchInventory();
+        fetchInventory(); // This will now use the updated fetchInventory we fixed earlier
+      } else {
+        const errorData = await response.json();
+        alert(`Update failed: ${errorData.error || "Unknown error"}`);
       }
     } catch (err) {
-      alert("Update failed");
+      console.error("Update error:", err);
+      alert("Update failed. Check your network connection to the server.");
     }
   };
 
@@ -305,8 +362,22 @@ export default function InventoryPage() {
             variant="primary"
             onClick={async () => {
               try {
+                // const response = await fetch(
+                //   "http://localhost:3000/api/inventory/add",
+                //   {
+                //     method: "POST",
+                //     headers: { "Content-Type": "application/json" },
+                //     body: JSON.stringify({
+                //       ...addForm,
+                //       userId: user.id,
+                //       handled_by: user.name,
+                //     }),
+                //   },
+                // );
+                const apiUrl = import.meta.env.VITE_API_URL;
+
                 const response = await fetch(
-                  "http://localhost:3000/api/inventory/add",
+                  `${apiUrl}/inventory/add`, // Use the variable instead of localhost
                   {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },

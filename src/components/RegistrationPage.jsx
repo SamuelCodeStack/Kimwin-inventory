@@ -29,6 +29,37 @@ export default function RegisterPage() {
     contact_number: "",
   });
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+
+  //   // Force users_level to 3 (Viewer) in the payload
+  //   const payload = {
+  //     ...formData,
+  //     users_level: 3,
+  //     contact_number: parseInt(formData.contact_number) || 0,
+  //   };
+
+  //   try {
+  //     const response = await fetch("http://localhost:3000/api/register", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     const data = await response.json();
+
+  //     if (response.ok) {
+  //       alert("Registration Successful! Your account is set to Viewer level.");
+  //       navigate("/");
+  //     } else {
+  //       alert(data.error || "Registration failed");
+  //     }
+  //   } catch (err) {
+  //     console.error("Connection error:", err);
+  //     alert("Could not connect to the server.");
+  //   }
+  // };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -40,7 +71,11 @@ export default function RegisterPage() {
     };
 
     try {
-      const response = await fetch("http://localhost:3000/api/register", {
+      // 1. Get the API URL from your .env file
+      const apiUrl = import.meta.env.VITE_API_URL;
+
+      // 2. Use the variable instead of localhost
+      const response = await fetch(`${apiUrl}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -56,7 +91,11 @@ export default function RegisterPage() {
       }
     } catch (err) {
       console.error("Connection error:", err);
-      alert("Could not connect to the server.");
+      // Helpful hint if the network is the issue
+      alert(
+        "Could not connect to the server. Ensure the backend is running at " +
+          import.meta.env.VITE_API_URL,
+      );
     }
   };
 

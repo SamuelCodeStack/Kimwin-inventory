@@ -56,12 +56,33 @@ export default function UsersPage() {
   const currentUser = JSON.parse(localStorage.getItem("user"));
   const isAdmin = currentUser?.level === 1;
 
+  // const fetchUsers = async () => {
+  //   if (!isAdmin) return;
+  //   try {
+  //     const response = await fetch("http://localhost:3000/api/users");
+  //     const data = await response.json();
+  //     setUsers(data);
+  //     setLoading(false);
+  //   } catch (err) {
+  //     console.error("Error fetching users:", err);
+  //     setLoading(false);
+  //   }
+  // };
+
   const fetchUsers = async () => {
     if (!isAdmin) return;
+
     try {
-      const response = await fetch("http://localhost:3000/api/users");
+      // 1. Pull the API URL from your .env file
+      const apiUrl = import.meta.env.VITE_API_URL;
+
+      // 2. Replace the hardcoded localhost with the apiUrl variable
+      const response = await fetch(`${apiUrl}/users`);
+
       const data = await response.json();
-      setUsers(data);
+
+      // Ensure data is an array before setting state to avoid crashes
+      setUsers(Array.isArray(data) ? data : []);
       setLoading(false);
     } catch (err) {
       console.error("Error fetching users:", err);

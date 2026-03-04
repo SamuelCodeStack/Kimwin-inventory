@@ -44,6 +44,33 @@ export default function ItemLogPage() {
   const user = JSON.parse(localStorage.getItem("user"));
   const isViewer = user?.level === 3;
 
+  // const fetchLogs = async () => {
+  //   const savedUser = JSON.parse(localStorage.getItem("user"));
+
+  //   if (!savedUser || savedUser.level === 3) {
+  //     setLoading(false);
+  //     return;
+  //   }
+
+  //   setLoading(true);
+  //   try {
+  //     // FIX: Send userId and userLevel to the API
+  //     const response = await fetch(
+  //       `http://localhost:3000/api/logs?userId=${savedUser.id}&userLevel=${savedUser.level}`,
+  //     );
+
+  //     if (!response.ok) throw new Error("Network response was not ok");
+
+  //     const data = await response.json();
+  //     setLogs(Array.isArray(data) ? data : []);
+  //   } catch (err) {
+  //     console.error("Fetch error:", err);
+  //     setLogs([]);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const fetchLogs = async () => {
     const savedUser = JSON.parse(localStorage.getItem("user"));
 
@@ -54,9 +81,13 @@ export default function ItemLogPage() {
 
     setLoading(true);
     try {
-      // FIX: Send userId and userLevel to the API
+      // 1. Get the API URL from your .env file
+      const apiUrl = import.meta.env.VITE_API_URL;
+
+      // 2. Replace localhost with the apiUrl variable
+      // We use backticks (`) to combine the variable with the query parameters
       const response = await fetch(
-        `http://localhost:3000/api/logs?userId=${savedUser.id}&userLevel=${savedUser.level}`,
+        `${apiUrl}/logs?userId=${savedUser.id}&userLevel=${savedUser.level}`,
       );
 
       if (!response.ok) throw new Error("Network response was not ok");

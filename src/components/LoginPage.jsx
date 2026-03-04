@@ -22,13 +22,43 @@ export default function LoginPage() {
     password: "",
   });
 
+  // const handleLogin = async (e) => {
+  //   e.preventDefault();
+  //   setIsLoading(true);
+  //   setError("");
+
+  //   try {
+  //     const response = await fetch("http://localhost:3000/api/login", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify(formData),
+  //     });
+
+  //     const data = await response.json();
+
+  //     if (response.ok) {
+  //       // Save user details to localStorage
+  //       localStorage.setItem("user", JSON.stringify(data.user));
+  //       navigate("/inventory");
+  //     } else {
+  //       setError(data.error || "Login failed");
+  //     }
+  //   } catch (err) {
+  //     setError("Could not connect to server.");
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await fetch("http://localhost:3000/api/login", {
+      // Use the environment variable here instead of localhost
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${apiUrl}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -44,7 +74,9 @@ export default function LoginPage() {
         setError(data.error || "Login failed");
       }
     } catch (err) {
-      setError("Could not connect to server.");
+      // If the IP is wrong or firewall is up, this catches it
+      setError("Could not connect to server. Check your network connection.");
+      console.error("Login Error:", err);
     } finally {
       setIsLoading(false);
     }
