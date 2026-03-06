@@ -136,9 +136,13 @@ export default function LoginPage() {
                     <Form.Label className="small fw-semibold text-muted">
                       Password
                     </Form.Label>
-                    <a href="#" className="small text-decoration-none">
+                    <Link
+                      to="/forgot-password"
+                      style={{ fontSize: "0.8rem" }}
+                      className="text-decoration-none"
+                    >
                       Forgot?
-                    </a>
+                    </Link>
                   </div>
                   <InputGroup>
                     <InputGroup.Text className="bg-white border-end-0">

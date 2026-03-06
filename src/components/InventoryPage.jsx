@@ -18,7 +18,7 @@ import autoTable from "jspdf-autotable"; // Import the function directly
 
 const getStockStatus = (quantity, minStock) => {
   if (quantity <= 0) return "Out of Stock";
-  if (quantity <= minStock) return "Low Stock";
+  if (quantity < minStock) return "Low Stock";
   return "In Stock";
 };
 
@@ -260,7 +260,7 @@ export default function InventoryPage() {
                     bg={
                       item.quantity <= 0
                         ? "danger" // Red if exactly 0 or less
-                        : item.quantity <= item.mininum_stock
+                        : item.quantity < item.mininum_stock
                           ? "warning" // Yellow if low stock
                           : "success" // Green if healthy stock
                     }

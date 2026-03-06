@@ -14,6 +14,8 @@ import ItemLogPage from "./components/ItemLogPage.jsx";
 import LoginPage from "./components/LoginPage.jsx";
 import RegisterPage from "./components/RegistrationPage.jsx";
 import UsersPage from "./components/UsersPage.jsx";
+import ForgotPassword from "./components/ForgotPassword.jsx";
+import ResetPassword from "./components/ResetPassword.jsx";
 
 // ProtectedRoute stays the same...
 const ProtectedRoute = ({ children, allowLevel }) => {
@@ -58,6 +60,9 @@ function AppContent() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
+
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/logs"
           element={

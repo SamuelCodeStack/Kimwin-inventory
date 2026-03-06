@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import env from "dotenv";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 
 const app = express();
 const port = 3000;
@@ -23,6 +24,77 @@ db.connect().then(() => {
   // Fixes the "Time Difference" issue for your session
   db.query("SET timezone = 'Asia/Manila'");
   console.log("Connected to Database & Timezone set to Manila");
+});
+
+app.post("/api/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // FIX 1: Changed 'pool' to 'db'
+    const user = await db.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+
+    if (user.rows.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "Check your email for a reset link." });
+    }
+
+    const token = crypto.randomBytes(20).toString("hex");
+    const expires = new Date(Date.now() + 3600000); // 1 hour expiry
+
+    // FIX 2: Changed 'pool' to 'db'
+    await db.query(
+      "UPDATE users SET reset_token = $1, reset_expires = $2 WHERE email = $3",
+      [token, expires, email],
+    );
+
+    // This prints the link to your Computer A terminal so you can test it
+    console.log("------------------------------------------");
+    console.log(
+      `RESET LINK: http://192.168.1.105:5173/reset-password?token=${token}`,
+    );
+    console.log("------------------------------------------");
+
+    res.json({ message: "Reset link sent!" });
+  } catch (err) {
+    console.error("Forgot Password Error:", err); // This helps you see the error in the terminal
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// --- RESET PASSWORD ROUTE ---
+app.post("/api/reset-password", async (req, res) => {
+  const { token, password } = req.body;
+
+  try {
+    // 1. Find user with this token and check if it hasn't expired yet
+    const result = await db.query(
+      "SELECT * FROM users WHERE reset_token = $1 AND reset_expires > NOW()",
+      [token],
+    );
+
+    if (result.rows.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Token is invalid or has expired." });
+    }
+
+    // 2. Hash the NEW password (same way you do in /register)
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 3. Update the database and CLEAR the token so it can't be used twice
+    await db.query(
+      "UPDATE users SET password = $1, reset_token = NULL, reset_expires = NULL WHERE reset_token = $2",
+      [hashedPassword, token],
+    );
+
+    res.json({ message: "Password updated successfully!" });
+  } catch (err) {
+    console.error("Reset Password Error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // --- AUTH ROUTES ---
